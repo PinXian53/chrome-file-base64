@@ -26,6 +26,10 @@
 - 純 Base64 會依檔頭自動判斷類型（PNG、JPG、GIF、WebP、PDF、ZIP…）並給予副檔名
 - 顯示每份收集狀態（缺第幾份一目了然）、圖片縮圖與預覽、可直接修改還原檔名
 
+**語系**
+- 依 Chrome 介面語言自動切換：中文（`zh-*`）顯示正體中文，其他語言一律顯示英文
+- 介面字串在 `extension/i18n.js`；擴充功能名稱與說明在 `extension/_locales/`
+
 ## 專案結構
 
 ```
@@ -33,6 +37,8 @@ extension/
   manifest.json   MV3 設定（權限只有 downloads）
   background.js   點擊圖示時開啟／切換到工具頁
   app.html/css/js 主要介面與邏輯
+  i18n.js         介面語系（中文／英文）
+  _locales/       擴充功能名稱、說明的語系檔
   icons/          icon.svg 與 16/32/48/128 PNG
 docs/
   file-base64.html  原 HTML 版

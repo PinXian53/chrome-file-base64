@@ -2,6 +2,7 @@
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
+  var t = window.I18N.t;
   var PREVIEW_LIMIT = 200000;         // 結果框最多顯示的字元數，避免超大字串卡住頁面
   var THUMB_LIMIT = 30 * 1024 * 1024; // 超過此大小的圖片不自動產生縮圖
 
@@ -112,7 +113,7 @@
     var s = str.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
     if (!/^[A-Za-z0-9+/]*=*$/.test(s)) {
       var bad = /[^A-Za-z0-9+/]|=(?!=*$)/.exec(s);
-      throw new Error('含有非 Base64 字元「' + bad[0] + '」（位置 ' + bad.index + '）');
+      throw new Error(t('err.badChar', bad[0], bad.index));
     }
     return s;
   }
@@ -120,7 +121,7 @@
   // 完整內容：驗證字元與長度並補齊 padding
   function normalizeBase64(str) {
     var body = cleanBase64(str).replace(/=+$/, '');
-    if (body.length % 4 === 1) throw new Error('Base64 長度不正確，內容可能不完整');
+    if (body.length % 4 === 1) throw new Error(t('err.badLength'));
     while (body.length % 4) body += '=';
     return body;
   }
@@ -282,7 +283,7 @@
 
   setupDropzone($('encode-dropzone'), $('encode-file-input'), function (files) {
     setSelectedFile(files[0]);
-    if (files.length > 1) toast('一次只能轉換一個檔案，已選取第一個', 'error');
+    if (files.length > 1) toast(t('toast.oneFile'), 'error');
   });
 
   function setSelectedFile(file) {
@@ -297,9 +298,9 @@
     encodeBtn.disabled = !file;
     if (!file) { updateEstimate(); return; }
 
-    $('encode-file-name').textContent = file.name || '未命名檔案';
+    $('encode-file-name').textContent = file.name || t('file.unnamed');
     $('encode-file-name').title = file.name;
-    $('encode-file-meta').textContent = formatBytes(file.size) + '・' + (file.type || '未知類型');
+    $('encode-file-meta').textContent = formatBytes(file.size) + t('sep') + (file.type || t('file.unknownType'));
     if (/^image\//.test(file.type) && file.size < THUMB_LIMIT) {
       chipThumbUrl = URL.createObjectURL(file);
       icon.textContent = '';
@@ -348,13 +349,13 @@
     if (splitMode === 'size') {
       var unit = $('split-size-unit').value;
       var num = parseFloat($('split-size-value').value);
-      if (!(num > 0)) throw new Error('請輸入大於 0 的大小');
+      if (!(num > 0)) throw new Error(t('err.sizePositive'));
       var bytes = Math.floor(num * (unit === 'MB' ? 1024 * 1024 : 1024));
-      if (bytes < 512) throw new Error('每份大小至少需要 0.5 KB');
+      if (bytes < 512) throw new Error(t('err.sizeMin'));
       return bytes;
     }
     var count = parseInt($('split-count-value').value, 10);
-    if (!(count >= 2)) throw new Error('份數至少為 2');
+    if (!(count >= 2)) throw new Error(t('err.countMin'));
     return count;
   }
 
@@ -392,12 +393,12 @@
     preview.textContent = '';
     if (!selectedFile) { est.textContent = ''; return; }
     var b64Len = Math.ceil(selectedFile.size / 3) * 4;
-    est.textContent = '預估輸出約 ' + formatBytes(b64Len) + '（約原檔 133%）';
+    est.textContent = t('estimate', formatBytes(b64Len));
     if (format === 'standard' && splitToggle.checked) {
       try {
         var v = readSplitValue();
         var n = computeParts(b64Len, selectedFile.name, selectedFile.type, splitMode, v, makeId());
-        preview.textContent = '將分割為 ' + n + ' 份，每份約 ' + formatBytes(Math.ceil(b64Len / n));
+        preview.textContent = t('split.preview', n, formatBytes(Math.ceil(b64Len / n)));
       } catch (e) {
         preview.textContent = e.message;
       }
@@ -415,7 +416,7 @@
 
     encodeBtn.disabled = true;
     encodeBtn.classList.add('loading');
-    setBtnLabel(encodeBtn, 'spinner', '轉換中…');
+    setBtnLabel(encodeBtn, 'spinner', t('encode.converting'));
 
     nextFrame().then(function () {
       return file.arrayBuffer();
@@ -441,11 +442,13 @@
       }
       renderEncodeResults(records, fileNames, file);
     }).catch(function (err) {
-      encodeError.textContent = '轉換失敗：' + (err && err.message ? err.message : err);
+      encodeError.textContent = t('err.convertFailed', err && err.message ? err.message : err);
     }).finally(function () {
       encodeBtn.disabled = !selectedFile;
       encodeBtn.classList.remove('loading');
-      setBtnLabel(encodeBtn, 'arrow', '開始轉換');
+      encodeBtn.textContent = '';
+      encodeBtn.appendChild(document.createTextNode(t('encode.btn')));
+      encodeBtn.appendChild(svgIcon(ICON.arrow));
     });
   });
 
@@ -453,7 +456,7 @@
     encodeResults.textContent = '';
     var total = records.length;
     var totalChars = records.reduce(function (s, r) { return s + r.length; }, 0);
-    var fmtLabel = { standard: '標準格式', raw: '純 Base64', datauri: 'Data URI' }[format];
+    var fmtLabel = { standard: t('format.standard'), raw: t('format.raw'), datauri: t('format.datauri') }[format];
 
     // 摘要列
     var summary = el('div', 'summary');
@@ -461,22 +464,22 @@
     sIcon.appendChild(svgIcon(ICON.check));
     summary.appendChild(sIcon);
     var sText = el('div', 'summary-text');
-    sText.appendChild(el('div', 'summary-title', '轉換完成' + (total > 1 ? '，共 ' + total + ' 份' : '')));
+    sText.appendChild(el('div', 'summary-title', total > 1 ? t('result.doneParts', total) : t('result.done')));
     sText.appendChild(el('div', 'summary-meta',
-      file.name + '・' + formatBytes(file.size) + ' → ' + formatBytes(totalChars) + '・' + fmtLabel));
+      file.name + t('sep') + formatBytes(file.size) + ' → ' + formatBytes(totalChars) + t('sep') + fmtLabel));
     summary.appendChild(sText);
 
     if (total > 1) {
-      var allBtn = btn('primary small', 'download', '下載全部 ' + total + ' 份');
+      var allBtn = btn('primary small', 'download', t('result.downloadAll', total));
       allBtn.addEventListener('click', function () {
         records.forEach(function (r, i) {
           setTimeout(function () { downloadText(r, fileNames[i]); }, i * 120);
         });
-        toast('已開始下載 ' + total + ' 個檔案');
+        toast(t('toast.downloadStarted', total));
       });
       summary.appendChild(allBtn);
     }
-    var clearBtn = btn('ghost small', null, '清除');
+    var clearBtn = btn('ghost small', null, t('result.clear'));
     clearBtn.addEventListener('click', function () { encodeResults.textContent = ''; });
     summary.appendChild(clearBtn);
     encodeResults.appendChild(summary);
@@ -491,15 +494,15 @@
       head.appendChild(title);
 
       var actions = el('div', 'part-actions');
-      var copyBtn = btn('secondary small', 'copy', '複製');
+      var copyBtn = btn('secondary small', 'copy', t('result.copy'));
       copyBtn.addEventListener('click', function () {
         copyText(record).then(function () {
-          flashDone(copyBtn, 'copy', '複製', '已複製');
+          flashDone(copyBtn, 'copy', t('result.copy'), t('result.copied'));
         }, function (err) {
-          toast('複製失敗：' + err.message, 'error');
+          toast(t('toast.copyFailed', err.message), 'error');
         });
       });
-      var dlBtn = btn('secondary small', 'download', '下載 .txt');
+      var dlBtn = btn('secondary small', 'download', t('result.download'));
       dlBtn.addEventListener('click', function () { downloadText(record, fileNames[idx]); });
       actions.appendChild(copyBtn);
       actions.appendChild(dlBtn);
@@ -514,7 +517,7 @@
       card.appendChild(ta);
       if (record.length > PREVIEW_LIMIT) {
         card.appendChild(el('div', 'truncated',
-          '內容過長，僅顯示前 ' + PREVIEW_LIMIT.toLocaleString() + ' 字元；請使用「複製」或「下載」取得完整內容。'));
+          t('result.truncated', PREVIEW_LIMIT.toLocaleString())));
       }
       encodeResults.appendChild(card);
     });
@@ -549,16 +552,16 @@
       items.forEach(function (it) {
         try {
           var recs = parseText(it.text, stripTxtName(it.file.name));
-          if (!recs.length) throw new Error('檔案是空的');
+          if (!recs.length) throw new Error(t('err.emptyFile'));
           all = all.concat(recs);
         } catch (err) {
-          errors.push(it.file.name + '：' + err.message);
+          errors.push(it.file.name + t('err.fileSep') + err.message);
         }
       });
       if (all.length) addRecords(all);
-      if (errors.length) decodeError.textContent = '以下檔案無法解析：\n' + errors.join('\n');
+      if (errors.length) decodeError.textContent = t('err.filesFailed') + '\n' + errors.join('\n');
     }).catch(function (err) {
-      decodeError.textContent = '讀取檔案失敗：' + err.message;
+      decodeError.textContent = t('err.readFailed', err.message);
     });
   }
 
@@ -586,7 +589,7 @@
     // Data URI
     var dm = /^data:([^;,]*)((?:;[^;,]*)*),/i.exec(text);
     if (dm) {
-      if (!/;base64/i.test(dm[2])) throw new Error('Data URI 不是 base64 編碼');
+      if (!/;base64/i.test(dm[2])) throw new Error(t('err.dataUriNotBase64'));
       var dtype = dm[1] || 'application/octet-stream';
       var ddata = normalizeBase64(text.slice(dm[0].length));
       var nameParam = /;name=([^;]+)/i.exec(dm[2]);
@@ -613,10 +616,10 @@
         partIndex = parseInt(p[0], 10) || 1;
         partTotal = parseInt(p[1], 10) || 1;
       }
-      if (partIndex > partTotal) throw new Error('分割編號不正確（' + fields.part + '）');
+      if (partIndex > partTotal) throw new Error(t('err.badPart', fields.part));
       return {
         id: fields.id || (filename + '::single'),
-        kind: '標準格式',
+        kind: t('format.standard'),
         filename: filename,
         type: type,
         partIndex: partIndex,
@@ -627,10 +630,10 @@
 
     // 純 Base64
     var data = normalizeBase64(text);
-    if (!data) throw new Error('沒有可解析的內容');
+    if (!data) throw new Error(t('err.nothing'));
     var sniff = sniffType(data);
     var rtype = sniff ? sniff.type : 'application/octet-stream';
-    return { id: makeId(), kind: '純 Base64', filename: guessName(fallbackName, data, rtype), type: rtype, partIndex: 1, partTotal: 1, data: data };
+    return { id: makeId(), kind: t('format.raw'), filename: guessName(fallbackName, data, rtype), type: rtype, partIndex: 1, partTotal: 1, data: data };
   }
 
   function safeDecode(s) {
@@ -656,10 +659,10 @@
         groupOrder.push(rec.id);
       }
       if (rec.partTotal !== g.partTotal) {
-        g.warnings.push('第 ' + rec.partIndex + ' 份標示的總份數（' + rec.partTotal + '）與其他份不一致');
+        g.warnings.push(t('group.warnTotal', rec.partIndex, rec.partTotal));
       }
       if (g.parts[rec.partIndex] != null) {
-        if (g.parts[rec.partIndex] !== rec.data) g.warnings.push('第 ' + rec.partIndex + ' 份重複且內容不同，已使用最新的一份');
+        if (g.parts[rec.partIndex] !== rec.data) g.warnings.push(t('group.warnDup', rec.partIndex));
       } else {
         added++;
       }
@@ -667,8 +670,8 @@
       resetBlob(g);
     });
     renderGroups();
-    if (added) toast('已加入 ' + added + ' 份資料');
-    else toast('這些資料先前已加入');
+    if (added) toast(t('toast.added', added));
+    else toast(t('toast.alreadyAdded'));
   }
 
   function resetBlob(g) {
@@ -723,7 +726,7 @@
           thumb.textContent = '';
           thumb.appendChild(img);
           thumb.style.cursor = 'zoom-in';
-          thumb.title = '點擊預覽';
+          thumb.title = t('group.preview');
           thumb.addEventListener('click', function () { openPreview(g.blobUrl); });
         } catch (e) { /* 內容有誤時維持文字縮圖，錯誤會在還原時顯示 */ }
       }
@@ -734,23 +737,23 @@
       var nameInput = el('input', 'name-input');
       nameInput.type = 'text';
       nameInput.value = g.filename;
-      nameInput.title = '可直接修改還原後的檔名';
+      nameInput.title = t('group.renameHint');
       nameInput.spellcheck = false;
       nameInput.addEventListener('input', function () { g.filename = nameInput.value; });
       body.appendChild(nameInput);
 
       body.appendChild(el('div', 'group-meta',
-        g.type + '・' + g.kind + '・' + (complete ? '' : '目前 ') + '約 ' + formatBytes(estimateDecodedSize(totalLen))));
+        g.type + t('sep') + g.kind + t('sep') + t(complete ? 'group.sizeComplete' : 'group.sizePartial', formatBytes(estimateDecodedSize(totalLen)))));
 
       var status = el('div', 'group-status ' + (complete ? 'ok' : 'bad'));
       status.appendChild(svgIcon(complete ? ICON.check : ICON.alert));
       if (complete) {
-        status.appendChild(document.createTextNode(g.partTotal > 1 ? '已收集全部 ' + g.partTotal + ' 份，可以還原' : '可以還原'));
+        status.appendChild(document.createTextNode(g.partTotal > 1 ? t('group.readyParts', g.partTotal) : t('group.ready')));
       } else {
         var missing = [];
         for (var i = 1; i <= g.partTotal; i++) if (g.parts[i] == null) missing.push(i);
         var missText = missing.length > 12 ? missing.slice(0, 12).join(', ') + '…' : missing.join(', ');
-        status.appendChild(document.createTextNode('已收集 ' + have + ' / ' + g.partTotal + ' 份，缺第 ' + missText + ' 份'));
+        status.appendChild(document.createTextNode(t('group.missing', have, g.partTotal, missText)));
       }
       body.appendChild(status);
 
@@ -759,7 +762,7 @@
           var dots = el('div', 'part-dots');
           for (var k = 1; k <= g.partTotal; k++) {
             var d = el('span', 'part-dot' + (g.parts[k] != null ? ' have' : ''), String(k));
-            d.title = g.parts[k] != null ? '第 ' + k + ' 份：已取得' : '第 ' + k + ' 份：缺少';
+            d.title = t(g.parts[k] != null ? 'group.partHave' : 'group.partMissing', k);
             dots.appendChild(d);
           }
           body.appendChild(dots);
@@ -776,21 +779,21 @@
 
       // 動作
       var actions = el('div', 'group-actions');
-      var restoreBtn = btn('primary small', 'download', '還原並下載');
+      var restoreBtn = btn('primary small', 'download', t('group.restore'));
       restoreBtn.disabled = !complete;
       restoreBtn.addEventListener('click', function () {
         decodeError.textContent = '';
         try {
           downloadBlob(groupBlob(g), g.filename || 'restored_file');
-          toast('已還原：' + g.filename);
+          toast(t('toast.restored', g.filename));
         } catch (err) {
-          decodeError.textContent = '還原「' + g.filename + '」失敗：' + err.message;
-          toast('還原失敗', 'error');
+          decodeError.textContent = t('err.restoreFailed', g.filename, err.message);
+          toast(t('toast.restoreFailed'), 'error');
         }
       });
       var rmBtn = el('button', 'icon-btn');
-      rmBtn.title = '移除';
-      rmBtn.setAttribute('aria-label', '移除');
+      rmBtn.title = t('group.remove');
+      rmBtn.setAttribute('aria-label', t('group.remove'));
       rmBtn.appendChild(svgIcon(ICON.trash));
       rmBtn.addEventListener('click', function () { removeGroup(id); });
       actions.appendChild(restoreBtn);
@@ -810,11 +813,11 @@
   function parsePasted() {
     decodeError.textContent = '';
     var text = decodePaste.value;
-    if (!text.trim()) { decodeError.textContent = '請先貼上 Base64 內容'; return; }
+    if (!text.trim()) { decodeError.textContent = t('err.pasteFirst'); return; }
     try {
       addRecords(parseText(text, ''));
     } catch (err) {
-      decodeError.textContent = '解析失敗：' + err.message;
+      decodeError.textContent = t('err.parseFailed', err.message);
     }
   }
   $('decode-paste-btn').addEventListener('click', parsePasted);
@@ -829,7 +832,7 @@
   });
   function updatePasteStat() {
     var n = decodePaste.value.length;
-    $('paste-stat').textContent = n ? n.toLocaleString() + ' 字元・⌘/Ctrl + Enter 解析' : '';
+    $('paste-stat').textContent = n ? t('paste.stat', n.toLocaleString()) : '';
   }
   decodePaste.addEventListener('input', updatePasteStat);
 
@@ -866,7 +869,7 @@
           f = new File([f], 'paste-' + stamp + '.' + f.name.split('.').pop(), { type: f.type });
         }
         setSelectedFile(f);
-        toast('已從剪貼簿加入檔案');
+        toast(t('toast.pastedFile'));
       }
     } else if (!inField) {
       if (files) {

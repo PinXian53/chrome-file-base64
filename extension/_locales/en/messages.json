@@ -1,0 +1,5 @@
+{
+  "appName": { "message": "File ⇄ Base64" },
+  "appDesc": { "message": "Convert files to Base64 and back, fully offline. Supports splitting into parts, Data URI and raw Base64 — your data never leaves your computer." },
+  "cmdOpen": { "message": "Open File ⇄ Base64" }
+}

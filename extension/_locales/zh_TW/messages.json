@@ -1,0 +1,5 @@
+{
+  "appName": { "message": "File ⇄ Base64" },
+  "appDesc": { "message": "離線將檔案轉成 Base64、或從 Base64 還原檔案。支援分割多份、Data URI、純 Base64，資料不離開你的電腦。" },
+  "cmdOpen": { "message": "開啟 File ⇄ Base64" }
+}

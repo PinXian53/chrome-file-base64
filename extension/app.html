@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File ⇄ Base64</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="icons/icon.svg" alt="" class="brand-logo">
+        <div class="brand-text">
+          <div class="brand-title">File ⇄ Base64</div>
+          <div class="brand-sub">檔案與 Base64 互轉工具</div>
+        </div>
+      </div>
+      <div class="badge-offline" title="所有轉換都在瀏覽器本機完成，不會連線或上傳">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+        100% 離線・資料不離開本機
+      </div>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" role="tab" data-tab="encode" aria-selected="true">檔案 → Base64</button>
+        <button class="tab" role="tab" data-tab="decode" aria-selected="false">Base64 → 檔案</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ================= Encode ================= -->
+    <section class="panel active" id="panel-encode" role="tabpanel">
+      <div class="page-head">
+        <div class="eyebrow">ENCODE</div>
+        <h1 class="page-title">檔案轉 Base64</h1>
+      </div>
+      <div class="card">
+        <label class="dropzone" id="encode-dropzone" tabindex="0">
+          <input type="file" id="encode-file-input" hidden>
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/></svg>
+          </div>
+          <div class="dz-title">拖曳檔案到這裡，或<span class="link">點擊選擇檔案</span></div>
+          <div class="dz-sub">也可以直接按 <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>V</kbd> 貼上檔案或截圖</div>
+        </label>
+
+        <div class="file-chip" id="encode-file-chip" hidden>
+          <div class="file-chip-icon" id="encode-file-ext">FILE</div>
+          <div class="file-chip-body">
+            <div class="file-chip-name" id="encode-file-name"></div>
+            <div class="file-chip-meta" id="encode-file-meta"></div>
+          </div>
+          <button class="icon-btn" id="encode-file-clear" title="移除檔案" aria-label="移除檔案">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+
+        <div class="field">
+          <div class="field-label">輸出格式</div>
+          <div class="segmented" id="format-seg">
+            <button class="seg active" data-format="standard">
+              <span class="seg-title">標準格式</span>
+              <span class="seg-desc">含檔名資訊・可分割</span>
+            </button>
+            <button class="seg" data-format="raw">
+              <span class="seg-title">純 Base64</span>
+              <span class="seg-desc">只有編碼內容</span>
+            </button>
+            <button class="seg" data-format="datauri">
+              <span class="seg-title">Data URI</span>
+              <span class="seg-desc">data:mime;base64,…</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field" id="split-field">
+          <label class="switch-row">
+            <span class="switch">
+              <input type="checkbox" id="split-toggle">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+            <span>
+              <span class="switch-title">分割成多份文字檔</span>
+              <span class="switch-desc">適合有單檔大小或字數限制的傳輸管道</span>
+            </span>
+          </label>
+
+          <div class="split-options" id="split-options" hidden>
+            <div class="mini-seg" id="split-mode-seg">
+              <button class="mini active" data-mode="size">依每份大小上限</button>
+              <button class="mini" data-mode="count">依份數</button>
+            </div>
+            <div class="input-row" id="size-row">
+              <input type="number" id="split-size-value" value="1" min="0.01" step="0.01">
+              <select id="split-size-unit">
+                <option value="KB">KB</option>
+                <option value="MB" selected>MB</option>
+              </select>
+              <span class="muted">／每份</span>
+            </div>
+            <div class="input-row" id="count-row" hidden>
+              <input type="number" id="split-count-value" value="2" min="2" step="1">
+              <span class="muted">份</span>
+            </div>
+            <div class="hint" id="split-preview"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" id="encode-btn" disabled>
+            開始轉換
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </button>
+          <span class="muted small" id="encode-estimate"></span>
+        </div>
+        <div class="error" id="encode-error" role="alert"></div>
+      </div>
+
+      <div id="encode-results"></div>
+    </section>
+
+    <!-- ================= Decode ================= -->
+    <section class="panel" id="panel-decode" role="tabpanel">
+      <div class="page-head">
+        <div class="eyebrow">DECODE</div>
+        <h1 class="page-title">Base64 還原檔案</h1>
+      </div>
+      <div class="card">
+        <label class="dropzone" id="decode-dropzone" tabindex="0">
+          <input type="file" id="decode-file-input" multiple hidden>
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+          </div>
+          <div class="dz-title">拖曳 Base64 文字檔到這裡，或<span class="link">點擊選擇</span></div>
+          <div class="dz-sub">可一次選取多份分割檔，系統會自動依編號合併</div>
+        </label>
+
+        <div class="divider"><span>或直接貼上文字</span></div>
+
+        <textarea id="decode-paste" class="code" spellcheck="false"
+          placeholder="支援以下格式：&#10;• 標準格式：filename:xxx;type:xxx;part:1/2;id:xxx;base64,....（多份可直接一起貼上）&#10;• Data URI：data:image/png;base64,....&#10;• 純 Base64 內容"></textarea>
+
+        <div class="actions">
+          <button class="btn primary" id="decode-paste-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            解析內容
+          </button>
+          <button class="btn secondary" id="decode-paste-clear">清空</button>
+          <span class="muted small" id="paste-stat"></span>
+        </div>
+        <div class="error" id="decode-error" role="alert"></div>
+      </div>
+
+      <div class="section-head" id="groups-head" hidden>
+        <h2>待還原檔案</h2>
+        <button class="btn secondary small" id="groups-clear">全部清除</button>
+      </div>
+      <div id="decode-groups"></div>
+    </section>
+
+  </main>
+
+  <div class="toast-host" id="toast-host" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
